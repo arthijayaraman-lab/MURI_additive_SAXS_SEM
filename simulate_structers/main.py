@@ -35,7 +35,9 @@ if __name__ == "__main__":
 
     del pores, pores_inst
     
-    save_structure_to_txt(structures, "{}_{}_{}_fcc.txt".format(n, blobiness, porosity))
+    structures_coords = get_coords_from_3d(structures, strd=350)
+    
+    save_structure_to_txt(structures_coords, "{}_{}_{}_fcc.txt".format(n, blobiness, porosity))
 
     print(structures.shape)
     

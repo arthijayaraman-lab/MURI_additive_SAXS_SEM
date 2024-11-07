@@ -5,6 +5,16 @@ from scipy.special import erfc
 import math
 import warnings
 
+def get_coords_from_3d(lattice, strd=400):
+    for i in range(0, lattice.shape[0], strd):
+        for j in range(0, lattice.shape[1], strd):
+            for k in range(0, lattice.shape[2], strd):
+                if i==j and i==0:
+                    coords = np.argwhere(lattice[i:i+strd,j:j+strd,k:k+strd]).astype(np.uint16)
+                else:
+                    coords = np.append(coords, np.argwhere(lattice[i:i+strd,j:j+strd,k:k+strd]).astype(np.uint16), axis = 0).astype(np.uint16)
+    return coords
+    
 def save_structure_to_txt(coords, filename):
     np.savetxt(filename, coords, fmt='%d', comments='')
     
