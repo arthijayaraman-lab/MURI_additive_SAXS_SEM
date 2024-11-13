@@ -28,18 +28,8 @@ class Gaussian_3d(nn.Module):
         
         #self.register_buffer('weight', kernel)
         self.groups = channels
-
-        if dim == 1:
-            self.conv = F.conv1d
-        elif dim == 2:
-            self.conv = F.conv2d
-        elif dim == 3:
-            self.conv = F.conv3d
-        else:
-            raise RuntimeError(
-                'Only 1, 2 and 3 dimensions are supported. Received {}.'.format(dim)
-            )
-
+        self.conv = F.conv3d
+        
     def forward(self, input):
         """
         Apply gaussian filter to input.
