@@ -10,6 +10,8 @@ import os.path as path
 import sys
 
 
+
+
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.is_available():
@@ -17,7 +19,7 @@ if __name__ == "__main__":
     else:
         print("PyTorch is not using GPU")
     
-    n = 2500
+    n = 1000
     blobiness = 5
     porosity=0.01
     
@@ -28,6 +30,10 @@ if __name__ == "__main__":
     lattice = np.memmap(filename, dtype=bool, mode='w+', shape=tuple([n]*3))
     lattice[:,:,:] = make_fcc_lattice(n).astype(bool)
     print("Completed lattice making")
+
+    # add code to make grains
+
+    # add code to out fcc orientation 
 
     
     # make pores 
