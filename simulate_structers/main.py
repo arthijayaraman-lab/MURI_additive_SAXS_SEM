@@ -43,16 +43,14 @@ if __name__ == "__main__":
     print("Logical ops done")
 
     plt.imshow(structures[5,:,:])
-    plt.savefig("structure_cs_{}_{}_{}_fcc.png".format(n, blobiness, porosity))
-    
+    plt.savefig("cs_imgs/structure_cs_{}_{}_{}_fcc.png".format(n, blobiness, porosity))
     
     structures_coords = get_coords_from_3d(structures, strd=500)
     
     print("size of structures_coords - ", sys.getsizeof(structures_coords))
 
-    save_structure_to_txt(structures_coords, "{}_{}_{}_fcc.txt".format(n, blobiness, porosity))
+    save_structure_to_txt(structures_coords, "lattice_coords/{}_{}_{}_fcc.txt".format(n, blobiness, porosity))
     
     print(structures.shape)
     
     print("Time consumed - ", st-time.time())
-
