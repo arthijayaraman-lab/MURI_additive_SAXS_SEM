@@ -70,7 +70,7 @@ def make_fcc_affine(n, rotation_angles=[0,0,0]):
     transformed_coordinates(3d- ndarray(np.uint16)) np.uint16 might change to float 
     """
     lattice = make_fcc_lattice(n)
-    fcc_coord = get_coords_from_3d(lattice, strd=400)  
+    fcc_coord = get_coords_from_3d(lattice)  
 
     # center coordinate at origin
     center = (n - 1) / 2 
@@ -108,7 +108,23 @@ def delete_rows_exceeding_value(arr, value):
     filtered_arr = arr[mask]  # Use the mask to filter rows
     return filtered_arr
 
-def make_fcc_affine_float_coords(n, rotation_angles=[0,0,0]):
+def delete_rows_suseding_value(arr, value):
+    """
+    Deletes rows from the array where any element in the row is greater than the specified value.
+
+    Parameters:
+        arr (np.ndarray): Input 2D NumPy array.
+        value (float or int): Threshold value.
+    
+    Returns:
+        np.ndarray: Array with rows removed.
+    """
+    mask = np.all(np.abs(arr) >= value, axis=1)  # Create a mask where all elements in a row are <= value
+    filtered_arr = arr[mask]  # Use the mask to filter rows
+    return filtered_arr
+
+
+def make_fcc_affine_float_coords(n, fcc_coord, rotation_angles=[0,0,0]):
     """
     Affine transformation of Fcc coordinates w/o translation 
     Input-
@@ -120,8 +136,6 @@ def make_fcc_affine_float_coords(n, rotation_angles=[0,0,0]):
     """
     n_orig = n 
     n=int(n*2)#(2/(2**0.5)))    
-    lattice = make_fcc_lattice(n)   
-    fcc_coord = get_coords_from_3d(lattice, strd=400)  
 
     # center coordinate at origin
     center = (n - 1) / 2 
@@ -144,7 +158,8 @@ def make_fcc_affine_float_coords(n, rotation_angles=[0,0,0]):
     # Create a new lattice with the rotated coordinates
     #rotated_lattice = np.zeros_like(lattice, dtype=bool)
     #rotated_lattice[transformed_coordinates[:, 0], transformed_coordinates[:, 1], transformed_coordinates[:, 2]] = True
-
+    transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, (n_orig) - 1)
+    transformed_coordinates = delete_rows_suseding_value(transformed_coordinates, 0)
     return transformed_coordinates
 
 def make_grains(n, out_size):
@@ -162,14 +177,8 @@ def make_grains(n, out_size):
             fcc_affine[coords_fcc_affine[j]] =  True 
         np.logical_and(grains_loc_cube[grains_loc_cube==i], fcc_affine)
 
-def get_coords_from_3d(lattice, strd=400):
-    for i in range(0, lattice.shape[0], strd):
-        for j in range(0, lattice.shape[1], strd):
-            for k in range(0, lattice.shape[2], strd):
-                if i==j and i==0:
-                    coords = np.argwhere(lattice[i:i+strd,j:j+strd,k:k+strd]).astype(np.uint16)
-                else:
-                    coords = np.append(coords, np.argwhere(lattice[i:i+strd,j:j+strd,k:k+strd]).astype(np.uint16), axis = 0).astype(np.uint16)
+def get_coords_from_3d(lattice):
+    coords = np.argwhere(lattice).astype(np.uint16)
     return coords
     
 def save_structure_to_txt(coords, filename):

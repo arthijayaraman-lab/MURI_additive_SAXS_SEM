@@ -14,7 +14,56 @@ from scipy.spatial import KDTree
 from joblib import Parallel, delayed
 from utils.utils import *
 
-def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, num_jobs=17):
+"""
+def testing_dist(fcc_array, grain_array, chunk_size=1000):
+    min_bounds = np.min(grain_array, axis=0) - threshold
+    max_bounds = np.max(grain_array, axis=0) + threshold
+
+    # Create mask for fcc_array based on bounds
+    mask = np.all((fcc_array >= min_bounds) & (fcc_array <= max_bounds), axis=1)
+    fcc_array = fcc_array[mask]
+
+    tree = KDTree(grain_array)
+
+    # Initialize mask
+    n_points = fcc_array.shape[0]
+    mask = np.zeros(n_points, dtype=bool)
+
+    # Process in chunks
+    for i in range(0, n_points, chunk_size):
+        batch = fcc_array[i:i + chunk_size]
+        indices = tree.query_ball_point(batch, threshold)
+        mask[i:i + chunk_size] = [len(idx) > 0 for idx in indices]
+    return fcc_array[mask]
+"""
+def create_bool_array(shape, true_coords):
+    # Initialize a 3D array of False values
+    bool_array = np.zeros(shape, dtype=bool)
+    
+    # Unpack the true_coords into separate arrays for each dimension
+    z, y, x = zip(*true_coords)  # This will unpack true_coords into three lists: z, y, x
+
+    # Set specified coordinates to True
+    bool_array[np.array(z), np.array(y), np.array(x)] = True
+
+    return bool_array
+
+
+def testing_dist(size, fcc_array, grain_array, threshold=1):
+    min_bounds = np.min(grain_array, axis=0) - threshold
+    max_bounds = np.max(grain_array, axis=0) + threshold
+
+    # Create mask for fcc_array based on bounds
+    mask = np.all((fcc_array >= min_bounds) & (fcc_array <= max_bounds), axis=1)
+    fcc_array = fcc_array[mask]
+
+    fcc_array_int = np.round(fcc_array)
+    #fcc_voxel = create_bool_array([size]*3, fcc_array_int)
+    grain_voxel = create_bool_array([size]*3, grain_array)
+    extracted_values = grain_voxel[tuple(fcc_array_int.T.astype(np.uint16))]
+    return fcc_array[extracted_values]
+
+def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, num_jobs=15):
 
     # Filter fcc_array based on min and max bounds with threshold
     for i in range(3):
@@ -25,6 +74,7 @@ def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, num_
         mask = fcc_array[:, i] < (np.max(grain_array, axis=0)[i] + threshold)
         fcc_array = fcc_array[mask]
     
+    print(fcc_array.shape)
     # Build KDTree for the grain_array
     tree = KDTree(grain_array)
 
@@ -56,6 +106,7 @@ def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, num_
         filtered_arr = np.hstack((filtered_arr, np.full((filtered_arr.shape[0], 1), grain_no)))
 
     return filtered_arr
+
 """
 
 def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, batch_size=100000):
@@ -173,8 +224,9 @@ if __name__ == "__main__":
     """
     make grains tested and OK!
     """
-    target_size=100
-    n_grains = 20
+    target_size=800
+    n_grains = 10
+    print("target_size", target_size)
 
     #st = time.time()
     grain_loc_cube = make_grain_voxels(n_grains,target_size).astype(np.uint16)
@@ -204,30 +256,34 @@ if __name__ == "__main__":
     output = np.zeros_like(grain_loc_cube).astype(bool) 
     
     out_size = target_size
-    rot_angl = [100,30,60]
+    rot_angl = [40,60,80]
     
-    out = np.empty((0, 4))
+    out = np.empty((0, 3))
+
+    lattice = make_fcc_lattice(out_size*2)   
+    fcc_coord = get_coords_from_3d(lattice)  
 
     for i in range(1, n_grains+1): 
-        #st = time.time()
-        fcc_coords_affine = make_fcc_affine_float_coords(out_size, rotation_angles= [np.random.choice(rot_angl), np.random.choice(rot_angl), np.random.choice(rot_angl)])
-        #print("time for make_fcc_affine_float_coords", time.time()-st)
+        st = time.time()
+        fcc_coords_affine = make_fcc_affine_float_coords(out_size, fcc_coord, rotation_angles= [np.random.choice(rot_angl), np.random.choice(rot_angl), np.random.choice(rot_angl)])
+        print("time for make_fcc_affine_float_coords", time.time()-st)
         fcc_coords_affine = fcc_coords_affine.astype(np.float32)
         coords_grain_loc = np.argwhere(grain_loc_cube==i)
         
+        print("start testing_dist")
         st = time.time()
-        grain_lattice_coords = compute_pair_wise_dist(fcc_coords_affine, coords_grain_loc, grain_no=i*10, threshold=1)   
-        print("time for compute_pair_wise_dist", time.time()-st)
+        #grain_lattice_coords = compute_pair_wise_dist(fcc_coords_affine, coords_grain_loc, grain_no=i*10, threshold=1) 
+        grain_lattice_coords = testing_dist(out_size, fcc_coords_affine, coords_grain_loc)
+        print("time for testing_dist", time.time()-st)
         
         print(grain_lattice_coords.shape)
-        print(grain_lattice_coords[0])
         out = np.append(out, grain_lattice_coords, axis=0)
     
     del grain_lattice_coords, fcc_coords_affine
 
     #plot_scatter_points(out, out_size)
-    out = out[:,:-1].copy()
-    save_structure_to_txt(out, "grains_100_20_fcc_affine.txt")
+    #out = out[:,:-1].copy()
+    save_structure_to_txt(out, "grains_800_30_fcc_affine.txt")
     print("Save Complete")
     #closest_point_index = np.argwhere(output) 
     
