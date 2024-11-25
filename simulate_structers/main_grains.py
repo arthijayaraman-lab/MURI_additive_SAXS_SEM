@@ -12,7 +12,7 @@ from joblib import Parallel, delayed
 import numpy as np
 from scipy.spatial import KDTree
 from joblib import Parallel, delayed
-
+from utils.utils import *
 
 def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, num_jobs=17):
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     """
     make grains tested and OK!
     """
-    target_size=300
+    target_size=100
     n_grains = 20
 
     #st = time.time()
@@ -223,8 +223,12 @@ if __name__ == "__main__":
         print(grain_lattice_coords[0])
         out = np.append(out, grain_lattice_coords, axis=0)
     
+    del grain_lattice_coords, fcc_coords_affine
+
     #plot_scatter_points(out, out_size)
-        
+    out = out[:,:-1].copy()
+    save_structure_to_txt(out, "grains_100_20_fcc_affine.txt")
+    print("Save Complete")
     #closest_point_index = np.argwhere(output) 
     
     #plot_scatter_points(closest_point_index, out_size)
