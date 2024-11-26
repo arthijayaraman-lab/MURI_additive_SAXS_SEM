@@ -19,7 +19,7 @@ if __name__ == "__main__":
     else:
         print("PyTorch is not using GPU")
     
-    n = 1000
+    n = 500
     blobiness = 5
     porosity=0.01
     
@@ -43,19 +43,24 @@ if __name__ == "__main__":
     print("Generated Pores")
 
     lattice = lattice[:pores.shape[0],:pores.shape[1],:pores.shape[2]].copy()
-    
+
     structures = np.logical_and(lattice, pores).copy()
+    
+    structures = lattice.copy()
     del pores
     print("Logical ops done")
 
     plt.imshow(structures[5,:,:])
     plt.savefig("cs_imgs/structure_cs_{}_{}_{}_fcc.png".format(n, blobiness, porosity))
     
-    structures_coords = get_coords_from_3d(structures, strd=500)
-    
-    print("size of structures_coords - ", sys.getsizeof(structures_coords))
+    structures_coords = get_coords_from_3d(structures)
+    #structures_coords = delete_rows_having_value(structures_coords, 0)
+    #structures_coords = delete_rows_having_value(structures_coords, 499)
 
-    save_structure_to_txt(structures_coords, "lattice_coords/{}_{}_{}_fcc.txt".format(n, blobiness, porosity))
+    print(structures_coords.min(),"-",structures_coords.max())
+
+    print("size of structures_coords - ", sys.getsizeof(structures_coords))
+    save_structure_to_txt(structures_coords, "lattice_coords/{}_{}_{}_fcc_perfect.txt".format(n, blobiness, porosity))
     
     print(structures.shape)
     

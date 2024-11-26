@@ -13,6 +13,7 @@ import numpy as np
 from scipy.spatial import KDTree
 from joblib import Parallel, delayed
 from utils.utils import *
+from make_pores import make_pores
 
 """
 def testing_dist(fcc_array, grain_array, chunk_size=1000):
@@ -224,13 +225,25 @@ if __name__ == "__main__":
     """
     make grains tested and OK!
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        print("PyTorch is using GPU")
+    else:
+        print("PyTorch is not using GPU")
+
     target_size=800
-    n_grains = 10
+    n_grains = 5
+    blobiness = 5
+    porosity=0.0001
     print("target_size", target_size)
 
     #st = time.time()
     grain_loc_cube = make_grain_voxels(n_grains,target_size).astype(np.uint16)
-    #print("time for graim_voxels", time.time()-st)
+    #print(grain_loc_cube.min(),"-", grain_loc_cube.max())
+    pores_inst = make_pores(shape=[target_size]*3, blobiness = blobiness, porosity = porosity, device=device)
+    pores = pores_inst.simulate_pores().copy()
+    grain_loc_cube[~pores]=0
+    
     closest_point_index = grain_loc_cube.ravel()
 
     """
@@ -256,7 +269,7 @@ if __name__ == "__main__":
     output = np.zeros_like(grain_loc_cube).astype(bool) 
     
     out_size = target_size
-    rot_angl = [40,60,80]
+    rot_angl = [0,0,0]
     
     out = np.empty((0, 3))
 
@@ -283,7 +296,7 @@ if __name__ == "__main__":
 
     #plot_scatter_points(out, out_size)
     #out = out[:,:-1].copy()
-    save_structure_to_txt(out, "grains_800_30_fcc_affine.txt")
+    save_structure_to_txt(out, "porous_{}_{}_grains_{}_{}_fcc_affine.txt".format( blobiness, porosity, target_size, n_grains))
     print("Save Complete")
     #closest_point_index = np.argwhere(output) 
     

@@ -132,8 +132,6 @@ def single_loop_minus_box(qrange,len_box, rs,fis, origin_centered = False, direc
             for ri,r in enumerate(rs): #iterate over sets of points   
                 r_array = np.array(r)
                 if not origin_centered: r_array -= len_box/2 # center co-ordinates
-                print(r_array.shape)
-                print(q_vecs.shape)
                 rvqs.append(np.matmul(r_array,q_vecs))
         
             sum_exp = np.zeros(v_array.shape[1]).astype('complex128') # check this shape and why is it here 
@@ -178,7 +176,7 @@ def single_loop_minus_box(qrange,len_box, rs,fis, origin_centered = False, direc
             rom_obj[:] = np.real(sum_conj).copy()
             return rom_obj #np.real(sum_conj).copy()  
 
-        results = Parallel(n_jobs=1)(delayed(q_vect_loop)(qi, q) for qi, q in enumerate(qrange))
+        results = Parallel(n_jobs=5)(delayed(q_vect_loop)(qi, q) for qi, q in enumerate(qrange))
 
         for qi, result in enumerate(results):
             ret[qi, :] = result  # Safely update ret in the main thread
@@ -186,7 +184,7 @@ def single_loop_minus_box(qrange,len_box, rs,fis, origin_centered = False, direc
     return structure_factor 
 
 def Iq1():
-    file = '/home/p51pro/UD/jayraman_lab/MURI_Additive/MURI_additive_SAXS_SEM/simulate_structers/grains_100_20_fcc_affine.txt'
+    file = '/lustre/jayaraman_lab/users/3352/MURI_additive_SAXS_SEM/simulate_structers/porous_5_0.01_grains_800_5_fcc_affine.txt'
     file_name = os.path.basename(file)
     print(file_name)
     lattice_spacing = 1 #d_i
@@ -208,7 +206,8 @@ def Iq1():
     toc = time.perf_counter()
     print(toc - tic)
     plt.loglog(q_range, structure_factor)
-    plt.savefig("Iq1_w_ff_{}.png".format(str(file_name.split(".")[0])))
+    print("Iq1_w_ff_{}.png".format(str(file_name.split(".txt")[0])))
+    plt.savefig("Iq1_w_ff_{}.png".format(str(file_name.split(".txt")[0])))
     plt.show()
     return q_range, structure_factor
 

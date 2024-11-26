@@ -12,6 +12,9 @@ from torch import nn
 from torch.nn import functional as F
 from scipy.spatial.transform import Rotation as R
 import math 
+import time 
+import torch
+
 
 def make_grain_voxels(n, out_size):
     """
@@ -56,7 +59,7 @@ def make_grain_voxels(n, out_size):
     return cube_index
 
 def transform_coordinates(coordinates, rotation_matrix):
-    transformed_coords = coordinates @ rotation_matrix.T
+    transformed_coords = coordinates@rotation_matrix.T
     return transformed_coords
     
 def make_fcc_affine(n, rotation_angles=[0,0,0]):
@@ -94,19 +97,10 @@ def make_fcc_affine(n, rotation_angles=[0,0,0]):
     return transformed_coordinates, rotated_lattice
 
 def delete_rows_exceeding_value(arr, value):
-    """
-    Deletes rows from the array where any element in the row is greater than the specified value.
-
-    Parameters:
-        arr (np.ndarray): Input 2D NumPy array.
-        value (float or int): Threshold value.
-    
-    Returns:
-        np.ndarray: Array with rows removed.
-    """
     mask = np.all(np.abs(arr) <= value, axis=1)  # Create a mask where all elements in a row are <= value
     filtered_arr = arr[mask]  # Use the mask to filter rows
     return filtered_arr
+
 
 def delete_rows_suseding_value(arr, value):
     """
@@ -120,6 +114,35 @@ def delete_rows_suseding_value(arr, value):
         np.ndarray: Array with rows removed.
     """
     mask = np.all(np.abs(arr) >= value, axis=1)  # Create a mask where all elements in a row are <= value
+    filtered_arr = arr[mask]  # Use the mask to filter rows
+    return filtered_arr
+def delete_rows_having_value(arr, value):
+    """
+    Deletes rows from the array where any element in the row is greater than the specified value.
+
+    Parameters:
+        arr (np.ndarray): Input 2D NumPy array.
+        value (float or int): Threshold value.
+    
+    Returns:
+        np.ndarray: Array with rows removed.
+    """
+    mask = np.all(np.abs(arr) != value, axis=1)  # Create a mask where all elements in a row are <= value
+    filtered_arr = arr[mask]  # Use the mask to filter rows
+    return filtered_arr
+
+def delete_rows_bounds(arr, lb, ub):
+    """
+    Deletes rows from the array where any element in the row is greater than the specified value.
+
+    Parameters:
+        arr (np.ndarray): Input 2D NumPy array.
+        value (float or int): Threshold value.
+    
+    Returns:
+        np.ndarray: Array with rows removed.
+    """
+    mask = np.all((arr >= lb) & (arr <= ub), axis=1)
     filtered_arr = arr[mask]  # Use the mask to filter rows
     return filtered_arr
 
@@ -142,10 +165,13 @@ def make_fcc_affine_float_coords(n, fcc_coord, rotation_angles=[0,0,0]):
     fcc_coord_centered = fcc_coord - center
 
     rotation_matrix = R.from_euler('xyz', rotation_angles, degrees=True).as_matrix().astype(np.float32)
+
+    st = time.time()
     transformed_coordinates = transform_coordinates(fcc_coord_centered, rotation_matrix)
+    print("transfor c00rds", time.time()-st)
+    st = time.time()
 
     transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, n//4)
-
     # Translate back to the center and round
     #new_center = ((n//(2/(2**0.5))) - 1) / 2 
     new_center = ((n//2) - 1) / 2 
@@ -153,13 +179,16 @@ def make_fcc_affine_float_coords(n, fcc_coord, rotation_angles=[0,0,0]):
     #transformed_coordinates = np.round(transformed_coordinates).astype(int)
     
     # Clip the coordinates to ensure they stay within bounds
-    transformed_coordinates = np.clip(transformed_coordinates, 0, (n_orig) - 1)
+    #transformed_coordinates = np.clip(transformed_coordinates, 0, (n_orig) - 1)
     
     # Create a new lattice with the rotated coordinates
     #rotated_lattice = np.zeros_like(lattice, dtype=bool)
     #rotated_lattice[transformed_coordinates[:, 0], transformed_coordinates[:, 1], transformed_coordinates[:, 2]] = True
-    transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, (n_orig) - 1)
-    transformed_coordinates = delete_rows_suseding_value(transformed_coordinates, 0)
+    #transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, (n_orig) - 1)
+    #transformed_coordinates = delete_rows_suseding_value(transformed_coordinates, 0)
+    transformed_coordinates = delete_rows_bounds(transformed_coordinates, 0, (n_orig) - 1)
+
+    print("aux affine", time.time()-st)
     return transformed_coordinates
 
 def make_grains(n, out_size):
