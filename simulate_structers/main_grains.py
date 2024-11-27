@@ -231,21 +231,25 @@ if __name__ == "__main__":
     else:
         print("PyTorch is not using GPU")
 
-    target_size=800
+    target_size=100
     n_grains = 5
     blobiness = 5
-    porosity=0.0001
-    print("target_size", target_size)
+    porosity=0.3
 
     #st = time.time()
     grain_loc_cube = make_grain_voxels(n_grains,target_size).astype(np.uint16)
     #print(grain_loc_cube.min(),"-", grain_loc_cube.max())
     pores_inst = make_pores(shape=[target_size]*3, blobiness = blobiness, porosity = porosity, device=device)
     pores = pores_inst.simulate_pores().copy()
-    grain_loc_cube[~pores]=0
+    if np.all(pores==False):
+        grain_loc_cube[~pores]=1
+    else:        
+        grain_loc_cube[~pores]=0
     
     closest_point_index = grain_loc_cube.ravel()
-
+    #print("grain_loc_cube", grain_loc_cube.shape)
+    #print("grain_loc_cube unique", len(np.unique(grain_loc_cube)))
+    #print("closest_point_index", closest_point_index.shape)
     """
     colors = plt.cm.viridis(closest_point_index/np.max(closest_point_index))
 
@@ -276,25 +280,24 @@ if __name__ == "__main__":
     lattice = make_fcc_lattice(out_size*2)   
     fcc_coord = get_coords_from_3d(lattice)  
 
-    for i in range(1, n_grains+1): 
-        st = time.time()
+    for i in np.unique(grain_loc_cube): 
+        #st = time.time()
         fcc_coords_affine = make_fcc_affine_float_coords(out_size, fcc_coord, rotation_angles= [np.random.choice(rot_angl), np.random.choice(rot_angl), np.random.choice(rot_angl)])
-        print("time for make_fcc_affine_float_coords", time.time()-st)
+        #print("time for make_fcc_affine_float_coords", time.time()-st)
         fcc_coords_affine = fcc_coords_affine.astype(np.float32)
         coords_grain_loc = np.argwhere(grain_loc_cube==i)
         
-        print("start testing_dist")
-        st = time.time()
+        #st = time.time()
         #grain_lattice_coords = compute_pair_wise_dist(fcc_coords_affine, coords_grain_loc, grain_no=i*10, threshold=1) 
         grain_lattice_coords = testing_dist(out_size, fcc_coords_affine, coords_grain_loc)
-        print("time for testing_dist", time.time()-st)
+        #print("time for testing_dist", time.time()-st)
         
         print(grain_lattice_coords.shape)
         out = np.append(out, grain_lattice_coords, axis=0)
     
     del grain_lattice_coords, fcc_coords_affine
 
-    #plot_scatter_points(out, out_size)
+    plot_scatter_points(out, out_size)
     #out = out[:,:-1].copy()
     save_structure_to_txt(out, "porous_{}_{}_grains_{}_{}_fcc_affine.txt".format( blobiness, porosity, target_size, n_grains))
     print("Save Complete")
