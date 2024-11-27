@@ -39,7 +39,6 @@ class make_pores():
 
         norm_blur = norm_to_uniform(blur, scale=[0, 1])
         norm_blur = norm_blur < self.porosity
-
         if self.compare:
             norm_im_spim = norm_to_uniform(im_spim, scale=[0, 1])
             norm_im_spim = norm_im_spim < self.porosity

@@ -168,7 +168,7 @@ def make_fcc_affine_float_coords(n, fcc_coord, rotation_angles=[0,0,0]):
 
     st = time.time()
     transformed_coordinates = transform_coordinates(fcc_coord_centered, rotation_matrix)
-    print("transfor c00rds", time.time()-st)
+    #print("transfor c00rds", time.time()-st)
     st = time.time()
 
     transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, n//4)
@@ -188,7 +188,7 @@ def make_fcc_affine_float_coords(n, fcc_coord, rotation_angles=[0,0,0]):
     #transformed_coordinates = delete_rows_suseding_value(transformed_coordinates, 0)
     transformed_coordinates = delete_rows_bounds(transformed_coordinates, 0, (n_orig) - 1)
 
-    print("aux affine", time.time()-st)
+    #print("aux affine", time.time()-st)
     return transformed_coordinates
 
 def make_grains(n, out_size):
