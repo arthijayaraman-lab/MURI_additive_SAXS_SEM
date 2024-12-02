@@ -28,7 +28,6 @@ class make_pores():
         for w_i in range(0,self.shape[0],500):
             for h_j in range(0,self.shape[1],500):
                 for d_k in range(0,self.shape[2],500):
-                    print(w_i, "-", h_j, "-", d_k)
                     Gaussian_fun = Gaussian_3d( channels=1, kernel_size=tuple(self.K), sigma=self.sigma, device = self.device, dim=3).to(self.device)
                     inp = torch.from_numpy(im[:, :, w_i:w_i+500, h_j:h_j+500, d_k:d_k+500]).to(self.device)
                     blur[0, 0, w_i:w_i+500, h_j:h_j+500, d_k:d_k+500] = Gaussian_fun(inp).cpu().detach().numpy()

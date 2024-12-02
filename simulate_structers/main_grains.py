@@ -8,12 +8,16 @@ import numpy as np
 import time 
 from concurrent.futures import ThreadPoolExecutor
 from joblib import Parallel, delayed
-
+import random
+import os
 import numpy as np
 from scipy.spatial import KDTree
 from joblib import Parallel, delayed
 from utils.utils import *
 from make_pores import make_pores
+import psutil
+from tqdm import tqdm
+
 
 """
 def testing_dist(fcc_array, grain_array, chunk_size=1000):
@@ -42,8 +46,10 @@ def create_bool_array(shape, true_coords):
     bool_array = np.zeros(shape, dtype=bool)
     
     # Unpack the true_coords into separate arrays for each dimension
-    z, y, x = zip(*true_coords)  # This will unpack true_coords into three lists: z, y, x
-
+    #z, y, x = zip(*true_coords)  # This will unpack true_coords into three lists: z, y, x
+    z = true_coords[:,2]
+    y = true_coords[:,1]
+    x = true_coords[:,0]
     # Set specified coordinates to True
     bool_array[np.array(z), np.array(y), np.array(x)] = True
 
@@ -57,12 +63,13 @@ def testing_dist(size, fcc_array, grain_array, threshold=1):
     # Create mask for fcc_array based on bounds
     mask = np.all((fcc_array >= min_bounds) & (fcc_array <= max_bounds), axis=1)
     fcc_array = fcc_array[mask]
-
+    
     fcc_array_int = np.round(fcc_array)
-    #fcc_voxel = create_bool_array([size]*3, fcc_array_int)
     grain_voxel = create_bool_array([size]*3, grain_array)
     extracted_values = grain_voxel[tuple(fcc_array_int.T.astype(np.uint16))]
+        
     return fcc_array[extracted_values]
+    
 
 def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1, num_jobs=15):
 
@@ -220,8 +227,32 @@ def compute_pair_wise_dist(fcc_array, grain_array, grain_no=0, threshold=1):
     
     return  filtered_arr #np.any(distances <= threshold)
 """
+def get_ram_usage_gb():
+    """Gets the RAM usage in gigabytes."""
+    mem = psutil.virtual_memory()
+    return mem.used / (1024 ** 3)  # Convert bytes to GB
 
-if __name__ == "__main__":
+
+def select_random_file():
+    directory = "/lustre/jayaraman_lab/users/3352/MURI_additive_SAXS_SEM/simulate_structers/affine_fcc_coords/"
+    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+    if files:
+        random_file = random.choice(files)
+        full_path = os.path.join(directory, random_file)
+        return full_path, random_file
+    else:
+        return "No files found in the directory"
+
+def random_read_fcc():
+    path, file_name = select_random_file()
+    with open(path, 'rb') as f:
+        inp = np.load(f)["arr_0"].copy()
+    inp=np.array(inp).astype(np.float16)
+    rot_angle = [int(x) for x in file_name.split("_")[1:4]]
+    return inp, rot_angle
+
+
+def main():
     """
     make grains tested and OK!
     """
@@ -231,22 +262,37 @@ if __name__ == "__main__":
     else:
         print("PyTorch is not using GPU")
 
-    target_size=100
-    n_grains = 5
-    blobiness = 5
-    porosity=0.3
+    target_size=700 # fixed 600
+    n_grains = int(np.random.choice(range(2,80), size=1, replace=True)) # vary 2-80
+    blobiness = int(np.random.choice(range(1,15), size=1, replace=True)) # 
+    porosity=random.uniform(0.01, 0.5) # 0.01 - 0.5 left squewed    
+    out_size = target_size
+    rot_angl = list(np.random.choice(range(90), size=3, replace=True))
+    coored_dump_folder = "/lustre/jayaraman_lab/users/3352/MURI_additive_SAXS_SEM/simulate_structers/coords_dump/"
 
-    #st = time.time()
+    print("-----Parameters------")
+    print("n_grains - ",n_grains)
+    print("blobiness - ",blobiness)
+    print("porosity - ",porosity)
+    print("rot_angl - ",rot_angl)
+
+    st = time.time()
     grain_loc_cube = make_grain_voxels(n_grains,target_size).astype(np.uint16)
     #print(grain_loc_cube.min(),"-", grain_loc_cube.max())
+    print("time to make grains - ", time.time()-st)
+    print(f"RAM usage: {get_ram_usage_gb():.2f} GB")    
+    
+    st = time.time()
     pores_inst = make_pores(shape=[target_size]*3, blobiness = blobiness, porosity = porosity, device=device)
     pores = pores_inst.simulate_pores().copy()
     if np.all(pores==False):
         grain_loc_cube[~pores]=1
     else:        
         grain_loc_cube[~pores]=0
+    del pores, pores_inst
+    print("time to make pores - ", time.time()-st)
+    print(f"RAM usage: {get_ram_usage_gb():.2f} GB")    
     
-    closest_point_index = grain_loc_cube.ravel()
     #print("grain_loc_cube", grain_loc_cube.shape)
     #print("grain_loc_cube unique", len(np.unique(grain_loc_cube)))
     #print("closest_point_index", closest_point_index.shape)
@@ -271,37 +317,43 @@ if __name__ == "__main__":
     #"""
 
     output = np.zeros_like(grain_loc_cube).astype(bool) 
-    
-    out_size = target_size
-    rot_angl = [0,0,0]
-    
     out = np.empty((0, 3))
+    
 
-    lattice = make_fcc_lattice(out_size*2)   
-    fcc_coord = get_coords_from_3d(lattice)  
+    st = time.time()
+    for i in tqdm(np.unique(grain_loc_cube)):
 
-    for i in np.unique(grain_loc_cube): 
-        #st = time.time()
-        fcc_coords_affine = make_fcc_affine_float_coords(out_size, fcc_coord, rotation_angles= [np.random.choice(rot_angl), np.random.choice(rot_angl), np.random.choice(rot_angl)])
+        #fcc_coords_affine = make_fcc_affine_float_coords(out_size, fcc_coord, rotation_angles=rot_angl)
+        fcc_coords_affine, rot_angl = random_read_fcc()
+
         #print("time for make_fcc_affine_float_coords", time.time()-st)
-        fcc_coords_affine = fcc_coords_affine.astype(np.float32)
+        fcc_coords_affine = fcc_coords_affine.astype(np.float16)
         coords_grain_loc = np.argwhere(grain_loc_cube==i)
         
-        #st = time.time()
+        
         #grain_lattice_coords = compute_pair_wise_dist(fcc_coords_affine, coords_grain_loc, grain_no=i*10, threshold=1) 
         grain_lattice_coords = testing_dist(out_size, fcc_coords_affine, coords_grain_loc)
-        #print("time for testing_dist", time.time()-st)
         
-        print(grain_lattice_coords.shape)
         out = np.append(out, grain_lattice_coords, axis=0)
-    
+        
     del grain_lattice_coords, fcc_coords_affine
-
-    plot_scatter_points(out, out_size)
+    #print("time to make affine grains - ", time.time()-st)
+    print(f"RAM usage: {get_ram_usage_gb():.2f} GB")    
+    
+    #plot_scatter_points(out, out_size)
     #out = out[:,:-1].copy()
-    save_structure_to_txt(out, "porous_{}_{}_grains_{}_{}_fcc_affine.txt".format( blobiness, porosity, target_size, n_grains))
+    st = time.time()
+    save_structure_to_txt(out, os.path.join(coored_dump_folder, "porous_{}_{}_grains_{}_{}_fcc_affine_{}_{}_{}.txt".format( blobiness, porosity, target_size, n_grains, rot_angl[0], rot_angl[1], rot_angl[2])))
     print("Save Complete")
+    print("time to save - ", time.time()-st)
+    print(f"RAM usage: {get_ram_usage_gb():.2f} GB")    
+    
     #closest_point_index = np.argwhere(output) 
     
     #plot_scatter_points(closest_point_index, out_size)
     #"""
+    return None
+
+if __name__ == "__main__":
+    for i in range(400):
+        main()

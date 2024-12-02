@@ -166,12 +166,15 @@ def make_fcc_affine_float_coords(n, fcc_coord, rotation_angles=[0,0,0]):
 
     rotation_matrix = R.from_euler('xyz', rotation_angles, degrees=True).as_matrix().astype(np.float32)
 
-    st = time.time()
-    transformed_coordinates = transform_coordinates(fcc_coord_centered, rotation_matrix)
+    #st = time.time()
+    transformed_coordinates = transform_coordinates(fcc_coord_centered.astype(np.float16), rotation_matrix)
     #print("transfor c00rds", time.time()-st)
-    st = time.time()
+    #st = time.time()
 
-    transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, n//4)
+    # ig its not required 
+    # 500 dump without
+    #transformed_coordinates = delete_rows_exceeding_value(transformed_coordinates, n//4)
+    
     # Translate back to the center and round
     #new_center = ((n//(2/(2**0.5))) - 1) / 2 
     new_center = ((n//2) - 1) / 2 
