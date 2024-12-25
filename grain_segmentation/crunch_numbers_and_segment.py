@@ -43,6 +43,9 @@ def overlay_images(img1, img2, alpha=0.5):
   return overlayed_img
   
 if __name__ == "__main__":
+    """
+    Post processing and grain size analysis 
+    """
     win_siz = 128 # tile size in pixels
     analysis_folder="/home/p51pro/UD/jayraman_lab/MURI_Additive/grin_detection/dataset_analyse_paper/analysis_folder/"
     for smaple_name in os.listdir(analysis_folder):
